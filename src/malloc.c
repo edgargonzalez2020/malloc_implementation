@@ -54,7 +54,7 @@ struct _block
 
 
 struct _block *freeList = NULL; /* Free list to track the _blocks available */
-
+struct _block *global;
 /*
  * \brief findFreeBlock
  *
@@ -78,6 +78,7 @@ struct _block *findFreeBlock(struct _block **last, size_t size)
       *last = curr;
       curr  = curr->next;
    }
+   num_reuses++;
 #endif
 
 #if defined BEST && BEST == 0
@@ -89,7 +90,27 @@ struct _block *findFreeBlock(struct _block **last, size_t size)
 #endif
 
 #if defined NEXT && NEXT == 0
-   printf("TODO: Implement next fit here\n");
+
+   curr=global;
+   while( curr && !(curr->free && curr->size >=size))
+   {
+      *last=curr;
+      curr=curr->next;
+      
+   
+   }
+   if(curr==NULL)
+   {
+      curr=freeList;
+      
+      while(curr != NULL && !(curr->free && curr->size >=size))
+         {
+            *last=curr;
+            curr=curr->next;
+         }  
+   }
+      global=curr;
+  // printf("TODO: Implement next fit here\n");
 #endif
 
    return curr;
@@ -125,13 +146,18 @@ struct _block *growHeap(struct _block *last, size_t size)
    if (freeList == NULL) 
    {
       freeList = curr;
+      global=curr;
    }
 
    /* Attach new _block to prev _block */
    if (last) 
    {
       last->next = curr;
+
    }
+   max_heap+=size;      
+   num_blocks++;
+   num_grows++;
 
    /* Update _block metadata */
    curr->size = size;
@@ -154,7 +180,7 @@ struct _block *growHeap(struct _block *last, size_t size)
  */
 void *malloc(size_t size) 
 {
-
+   
    if( atexit_registered == 0 )
    {
       atexit_registered = 1;
@@ -169,11 +195,11 @@ void *malloc(size_t size)
    {
       return NULL;
    }
-
+   num_mallocs++;
    /* Look for free _block */
    struct _block *last = freeList;
    struct _block *next = findFreeBlock(&last, size);
-
+   num_requested+=size;
    /* TODO: Split free _block if possible */
 
    /* Could not find free _block, so grow heap */
@@ -216,7 +242,7 @@ void free(void *ptr)
    struct _block *curr = BLOCK_HEADER(ptr);
    assert(curr->free == 0);
    curr->free = true;
-
+   num_frees++;
    /* TODO: Coalesce free _blocks if needed */
 }
 
