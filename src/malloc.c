@@ -244,6 +244,19 @@ void free(void *ptr)
    curr->free = true;
    num_frees++;
    /* TODO: Coalesce free _blocks if needed */
+
+  //check to see if curr is null and if block is adjacent 
+   if( curr && curr->next!=NULL){
+         curr->size = (curr->size+curr->next->size)+sizeof(struct _block);
+         
+         if(curr->next->next ==NULL)
+            curr->next= NULL;
+         else
+         curr->next=curr->next->next;
+
+         printf("\ncurr new size: %zu",curr->size);
+	 num_coalesces++;
+   }
 }
 
 /* vim: set expandtab sts=3 sw=3 ts=6 ft=cpp: --------------------------------*/
