@@ -258,5 +258,35 @@ void free(void *ptr)
 	 num_coalesces++;
    }
 }
+void * calloc( size_t nmemb, size_t size_arg )
+{
+  struct _block * new_block = (struct _block *) malloc( size_arg * nmemb );
+  memset( BLOCK_DATA(new_block), '\0', BLOCK_HEADER(new_block)->size );
+  /* Return data address associated with _block */
+  return BLOCK_DATA(new_block);
+  
+}
+/*
+ *
+ *
+ *
+ */
+void * realloc( void * ptr, size_t size )
+{
+  if( !ptr && size > 0 )
+  {
+    return malloc( size );
+  }
+  else if( size == 0 )
+  {
+    free( ptr );
+    return NULL;
+  }
+  // realloc guarentess the content of the ptr will be the same up
+  // until the lesser of the new size and old size
+  struct _block * next = (struct _block *)malloc( size );
+  memcpy( BLOCK_DATA( next ), ptr, BLOCK_HEADER(ptr)->size );
+  return BLOCK_DATA( next );
+}
 
 /* vim: set expandtab sts=3 sw=3 ts=6 ft=cpp: --------------------------------*/
