@@ -26,14 +26,6 @@ static int num_coalesces     = 0;
 static int num_blocks        = 0;
 static int num_requested     = 0;
 static int max_heap          = 0;
-
-
-
-int min( size_t lhs, size_t rhs )
-{
-   return lhs <= rhs ? lhs : rhs;
-}
-
 /*
  *  \brief printStatistics
  *
