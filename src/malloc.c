@@ -1,8 +1,15 @@
+/* Name: Edgar Gonzalez & Sergio Guerero
+ * ID: 1001336686 & 
+ *
+ *
+ */
+#include <limits.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define ALIGN4(s)         (((((s) - 1) >> 2) << 2) + 4)
 #define BLOCK_DATA(b)      ((b) + 1)
@@ -19,6 +26,13 @@ static int num_coalesces     = 0;
 static int num_blocks        = 0;
 static int num_requested     = 0;
 static int max_heap          = 0;
+
+
+
+int min( size_t lhs, size_t rhs )
+{
+   return lhs <= rhs ? lhs : rhs;
+}
 
 /*
  *  \brief printStatistics
@@ -78,15 +92,57 @@ struct _block *findFreeBlock(struct _block **last, size_t size)
       *last = curr;
       curr  = curr->next;
    }
-   num_reuses++;
 #endif
 
 #if defined BEST && BEST == 0
-   printf("TODO: Implement best fit here\n");
+   while (curr && !(curr->free && curr->size >= size)) 
+   {
+      *last = curr;
+      curr  = curr->next;
+   }
+   int small = INT_MAX;
+   struct _block * temp = NULL;
+   while( curr != NULL )
+   {
+      if( curr->size >= size )
+      {
+         int diff = curr->size - size;
+         if( diff < small )
+         {
+            small = curr->size;
+            temp = curr;
+         }
+      }
+      *last = curr;
+      curr = curr->next;
+   }
+   curr = temp; 
+
 #endif
 
 #if defined WORST && WORST == 0
-   printf("TODO: Implement worst fit here\n");
+   while (curr && !(curr->free && curr->size >= size)) 
+   {
+      *last = curr;
+      curr  = curr->next;
+   }
+   int big = INT_MIN;
+   struct _block * temp_ = NULL;
+   while( curr != NULL )
+   {
+      if( curr->size >= size )
+      {
+         int diff = curr->size - size;
+         if( diff > big )
+         {
+            big = curr->size;
+            temp_ = curr;
+         }
+      }
+      *last = curr;
+      curr = curr->next;
+   }
+   curr = temp_;
 #endif
 
 #if defined NEXT && NEXT == 0
@@ -200,12 +256,15 @@ void *malloc(size_t size)
    struct _block *last = freeList;
    struct _block *next = findFreeBlock(&last, size);
    num_requested+=size;
-   /* TODO: Split free _block if possible */
-
+   
    /* Could not find free _block, so grow heap */
    if (next == NULL) 
    {
       next = growHeap(last, size);
+   }
+   else
+   {
+      num_reuses++;
    }
 
    /* Could not find free _block or grow heap, so just return NULL */
@@ -244,49 +303,57 @@ void free(void *ptr)
    curr->free = true;
    num_frees++;
    /* TODO: Coalesce free _blocks if needed */
-
-  //check to see if curr is null and if block is adjacent 
-   if( curr && curr->next!=NULL){
+   curr = freeList;
+   while( curr )
+   {
+      if( curr && curr->next !=NULL && curr->free && curr->next->free )
+      {
          curr->size = (curr->size+curr->next->size)+sizeof(struct _block);
-         
-         if(curr->next->next ==NULL)
-            curr->next= NULL;
-         else
          curr->next=curr->next->next;
-
-         printf("\ncurr new size: %zu",curr->size);
-	 num_coalesces++;
+         num_coalesces++;
+      }
+      curr = curr->next;
    }
+   
+
 }
-void * calloc( size_t nmemb, size_t size_arg )
+/* args: size_t, size_t
+ * rvalue: void *
+ * description: returns a pointer to a block
+ * of memory that has been initialized to zero
+ *
+ */
+void * calloc( size_t nmemb, size_t size )
 {
-  struct _block * new_block = (struct _block *) malloc( size_arg * nmemb );
-  memset( BLOCK_DATA(new_block), '\0', BLOCK_HEADER(new_block)->size );
-  /* Return data address associated with _block */
-  return BLOCK_DATA(new_block);
-  
+   void * ptr = malloc( nmemb * size );
+   memset( ptr,0,ALIGN4(nmemb*size) );
+   return ptr;
 }
-/*
- *
- *
- *
+/* args: void *, size_t
+ * rvalue: void *
+ * description: Returns a pointer to an allocated piece 
+ * of memory. If ptr is NULL, realloc is equivalent to 
+ * malloc(size), or if size is zero, realloc is equivalent
+ * to free(ptr)
  */
 void * realloc( void * ptr, size_t size )
 {
-  if( !ptr && size > 0 )
-  {
-    return malloc( size );
-  }
-  else if( size == 0 )
-  {
-    free( ptr );
-    return NULL;
-  }
-  // realloc guarentess the content of the ptr will be the same up
-  // until the lesser of the new size and old size
-  struct _block * next = (struct _block *)malloc( size );
-  memcpy( BLOCK_DATA( next ), ptr, BLOCK_HEADER(ptr)->size );
-  return BLOCK_DATA( next );
+   if( !ptr && size > 0 )
+   {
+      return malloc( size );
+   }
+   else if( size == 0 )
+   {
+      free( ptr );
+      return NULL;
+   }
+   if( ptr != NULL )
+   {
+      struct _block * next = (struct _block *)malloc( size );
+      memcpy( BLOCK_DATA( next ), ptr, BLOCK_HEADER(ptr)->size ); 
+      free(ptr);
+      return BLOCK_DATA( next );
+   }
+   return NULL;
 }
-
 /* vim: set expandtab sts=3 sw=3 ts=6 ft=cpp: --------------------------------*/
